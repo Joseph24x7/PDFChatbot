@@ -1,7 +1,6 @@
 package com.docqa.controller;
 
 import com.docqa.dto.DocumentUploadResponse;
-import com.docqa.model.DocumentEntity;
 import com.docqa.service.DocumentService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -36,11 +35,9 @@ public class DocumentController {
 
         validateFile(file);
 
-        DocumentEntity savedDocument = documentService.uploadAndProcessDocument(file, query);
+        String response = documentService.uploadAndProcessDocument(file, query);
 
-        DocumentUploadResponse response = DocumentUploadResponse.builder().documentId(savedDocument.getId()).summary(savedDocument.getSummary()).build();
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(DocumentUploadResponse.builder().query(query).response(response).build());
     }
 
     private void validateFile(MultipartFile file) {

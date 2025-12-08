@@ -16,6 +16,7 @@ public class OllamaService {
 
     public String generateText(String prompt) {
         try {
+            log.info("Generating text from Ollama model with prompt length: {}", prompt.length());
             return ollama.call(prompt);
         } catch (Exception e) {
             log.error("Error generating text from Ollama model", e);
