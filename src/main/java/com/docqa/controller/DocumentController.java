@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/documents")
+@RequestMapping("/api/v1/documents")
 @Slf4j
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @Tag(name = "Document Management", description = "APIs for document upload, summarization, and Q&A")

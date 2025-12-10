@@ -8,7 +8,6 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Document(collection = "documents")
 @Data
@@ -24,7 +23,6 @@ public class DocumentEntity {
     private long fileSize;
     private String fileHash;
     private String extractedText;
-    private Map<String, String> queryCache;
     private LocalDateTime uploadedAt;
     private LocalDateTime updatedAt;
 

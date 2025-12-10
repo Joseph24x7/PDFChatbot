@@ -11,8 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
 @Slf4j
@@ -42,7 +40,7 @@ public class DocumentService {
 
         log.info("Generated summary/answer using Ollama");
 
-        updateDocument(document, query, response);
+        document.setUpdatedAt(LocalDateTime.now());
         documentRepository.save(document);
 
         return response;
@@ -56,7 +54,6 @@ public class DocumentService {
         log.info("Successfully extracted text from PDF, length: {} characters", extractedText.length());
 
         LocalDateTime now = LocalDateTime.now();
-        Map<String, String> queryCache = new HashMap<>();
 
         return DocumentEntity.builder()
                 .fileName(file.getOriginalFilename())
@@ -64,7 +61,6 @@ public class DocumentService {
                 .fileSize(file.getSize())
                 .fileHash(fileHash)
                 .extractedText(extractedText)
-                .queryCache(queryCache)
                 .uploadedAt(now)
                 .updatedAt(now)
                 .build();
@@ -76,9 +72,5 @@ public class DocumentService {
                 PromptTemplates.getSummarizationPrompt(extractedText);
     }
 
-    private void updateDocument(DocumentEntity document, String query, String response) {
-        document.setUpdatedAt(LocalDateTime.now());
-        document.getQueryCache().put(query, response);
-    }
 }
 
