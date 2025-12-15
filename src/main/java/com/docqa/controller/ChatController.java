@@ -1,7 +1,7 @@
 package com.docqa.controller;
 
-import com.docqa.dto.ChatMessageRequest;
 import com.docqa.dto.ChatMessageDto;
+import com.docqa.dto.ChatMessageRequest;
 import com.docqa.dto.ChatSessionResponse;
 import com.docqa.model.ChatSession;
 import com.docqa.service.ChatService;
@@ -35,7 +35,7 @@ public class ChatController {
         log.info("Received chat message for session: {}", request.getSessionId());
 
         if (request.getSessionId() == null || request.getSessionId().isEmpty()) {
-            log.error("Session ID is required");
+            log.error("sendMessage: Session ID is required");
             return ResponseEntity.badRequest().build();
         }
 
@@ -46,7 +46,7 @@ public class ChatController {
 
         try {
             String response = chatService.chat(request.getSessionId(), request.getQuestion());
-            ChatSession session = chatService.getSessionWithMessages(request.getSessionId());
+            ChatSession session = chatService.getChatSession(request.getSessionId());
 
             List<ChatMessageDto> messages = session.getMessages().stream()
                     .map(msg -> ChatMessageDto.builder()
@@ -78,12 +78,12 @@ public class ChatController {
         log.info("Retrieving chat session: {}", sessionId);
 
         if (sessionId == null || sessionId.isEmpty()) {
-            log.error("Session ID is required");
+            log.error("getChatSession: Session ID is required");
             return ResponseEntity.badRequest().build();
         }
 
         try {
-            ChatSession session = chatService.getSessionWithMessages(sessionId);
+            ChatSession session = chatService.getChatSession(sessionId);
 
             List<ChatMessageDto> messages = session.getMessages().stream()
                     .map(msg -> ChatMessageDto.builder()

@@ -5,11 +5,9 @@ import com.docqa.model.ChatSession;
 import com.docqa.model.DocumentEntity;
 import com.docqa.repository.ChatSessionRepository;
 import com.docqa.repository.DocumentRepository;
-import com.docqa.util.PromptTemplates;
+import com.docqa.util.PromptBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 @Slf4j
@@ -69,7 +67,7 @@ public class ChatService {
         session.addMessage(userMsg);
 
         // Build prompt with conversation context
-        String prompt = buildContextualPrompt(session, userMessage);
+        String prompt = PromptBuilder.buildContextualPrompt(session, userMessage);
 
         // Get response from Ollama
         String assistantResponse = ollamaService.generateText(prompt);
@@ -85,44 +83,5 @@ public class ChatService {
         return assistantResponse;
     }
 
-    /**
-     * Build a prompt that includes conversation history and document context
-     */
-    private String buildContextualPrompt(ChatSession session, String currentQuestion) {
-        StringBuilder promptBuilder = new StringBuilder();
-
-        // Document context
-        promptBuilder.append("You are a helpful assistant analyzing the following document:\n\n");
-        promptBuilder.append("---DOCUMENT START---\n");
-        promptBuilder.append(session.getExtractedText());
-        promptBuilder.append("\n---DOCUMENT END---\n\n");
-
-        // Conversation history
-        if (!session.getMessages().isEmpty() && session.getMessages().size() > 1) {
-            promptBuilder.append("Previous conversation:\n");
-            // Include last 5 exchanges to keep context window manageable
-            int startIndex = Math.max(0, session.getMessages().size() - 10);
-            for (int i = startIndex; i < session.getMessages().size() - 1; i++) {
-                ChatMessage msg = session.getMessages().get(i);
-                promptBuilder.append(msg.getRole().equals("user") ? "User: " : "Assistant: ");
-                promptBuilder.append(msg.getContent()).append("\n");
-            }
-            promptBuilder.append("\n");
-        }
-
-        // Current question
-        promptBuilder.append("Current question:\n");
-        promptBuilder.append(currentQuestion).append("\n\n");
-        promptBuilder.append("Please provide a detailed answer based on the document and conversation history.");
-
-        return promptBuilder.toString();
-    }
-
-    /**
-     * Get all messages for a session
-     */
-    public ChatSession getSessionWithMessages(String sessionId) {
-        return getChatSession(sessionId);
-    }
 }
 

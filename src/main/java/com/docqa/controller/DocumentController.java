@@ -1,17 +1,18 @@
 package com.docqa.controller;
 
 import com.docqa.dto.DocumentUploadResponse;
-import com.docqa.service.DocumentService;
-import com.docqa.service.ChatService;
 import com.docqa.model.ChatSession;
+import com.docqa.service.ChatService;
+import com.docqa.service.DocumentService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import static com.docqa.validator.ChatBotValidator.validateFile;
 
 @RestController
 @RequestMapping("/api/v1/documents")
@@ -38,7 +39,7 @@ public class DocumentController {
 
         log.info("Received document upload request: {}", file.getOriginalFilename());
 
-        validateFile(file);
+        validateFile(file, maxFileSize);
 
         // Upload and process document
         String documentId = documentService.uploadDocument(file);
@@ -47,7 +48,7 @@ public class DocumentController {
         ChatSession session = chatService.startChatSession(documentId);
 
         // Get initial response if query provided
-        String initialResponse = null;
+        String initialResponse;
         if (query != null && !query.trim().isEmpty()) {
             initialResponse = chatService.chat(session.getId(), query);
         } else {
@@ -62,22 +63,6 @@ public class DocumentController {
                 .documentId(documentId)
                 .build()
         );
-    }
-
-    private void validateFile(MultipartFile file) {
-
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty");
-        }
-
-        if (!MediaType.APPLICATION_PDF_VALUE.equals(file.getContentType())) {
-            throw new IllegalArgumentException("File must be a PDF");
-        }
-
-        if (file.getSize() > maxFileSize) {
-            throw new IllegalArgumentException(String.format("File size exceeds maximum allowed size of %d bytes", maxFileSize));
-        }
-
     }
 
 }
