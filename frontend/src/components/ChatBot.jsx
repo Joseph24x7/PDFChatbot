@@ -10,6 +10,7 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState(null); // For accumulating streaming chunks
   const messagesEndRef = useRef(null);
   const stompClientRef = useRef(null);
 
@@ -40,15 +41,7 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
           const receivedMessage = JSON.parse(message.body);
           console.log('Received message:', receivedMessage);
 
-          if (receivedMessage.role === 'error') {
-            setError(`❌ ${receivedMessage.content}`);
-            setLoading(false);
-          } else {
-            setMessages((prev) => [...prev, receivedMessage]);
-            if (receivedMessage.role === 'assistant') {
-              setLoading(false);
-            }
-          }
+          handleStreamingMessage(receivedMessage);
         });
       },
       onStompError: (frame) => {
@@ -76,7 +69,62 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, streamingMessage]);
+
+  const handleStreamingMessage = (receivedMessage) => {
+    const { type, role, content, messageId } = receivedMessage;
+
+    switch (type) {
+      case 'message':
+        // Regular user message
+        if (role === 'user') {
+          setMessages((prev) => [...prev, { role: 'user', content }]);
+        }
+        break;
+
+      case 'start':
+        // Start of streaming response
+        setLoading(true);
+        setStreamingMessage({ role: 'assistant', content: '', messageId });
+        break;
+
+      case 'chunk':
+        // Accumulate streaming chunks
+        setStreamingMessage((prev) => {
+          if (prev && prev.messageId === messageId) {
+            return { ...prev, content: prev.content + content };
+          }
+          return { role: 'assistant', content, messageId };
+        });
+        break;
+
+      case 'end':
+        // End of streaming - add complete message to history
+        setLoading(false);
+        setMessages((prev) => [...prev, { role: 'assistant', content }]);
+        setStreamingMessage(null);
+        break;
+
+      case 'error':
+        // Error message
+        setError(`❌ ${content}`);
+        setLoading(false);
+        setStreamingMessage(null);
+        break;
+
+      default:
+        // Legacy format for backward compatibility
+        if (role === 'error') {
+          setError(`❌ ${content}`);
+          setLoading(false);
+        } else {
+          setMessages((prev) => [...prev, receivedMessage]);
+          if (role === 'assistant') {
+            setLoading(false);
+          }
+        }
+    }
+  };
 
   const loadChatHistory = async () => {
     try {
@@ -152,23 +200,36 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
 
         {/* Messages Container */}
         <div className="messages-container">
-          {messages.length === 0 ? (
+          {messages.length === 0 && !streamingMessage ? (
             <div className="empty-state">
               <h3>👋 Start a Conversation</h3>
               <p>Ask any questions about the document below</p>
             </div>
           ) : (
-            messages.map((msg, idx) => (
-              <div key={idx} className={`message ${msg.role}`}>
-                <div className="message-avatar">
-                  {msg.role === 'user' ? '👤' : '🤖'}
+            <>
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`message ${msg.role}`}>
+                  <div className="message-avatar">
+                    {msg.role === 'user' ? '👤' : '🤖'}
+                  </div>
+                  <div className="message-content">{msg.content}</div>
                 </div>
-                <div className="message-content">{msg.content}</div>
-              </div>
-            ))
+              ))}
+
+              {/* Streaming message - shown in real-time */}
+              {streamingMessage && (
+                <div className="message assistant streaming">
+                  <div className="message-avatar">🤖</div>
+                  <div className="message-content">
+                    {streamingMessage.content}
+                    <span className="streaming-cursor">▊</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-          {loading && (
+          {loading && !streamingMessage && (
             <div className="message assistant">
               <div className="message-avatar">🤖</div>
               <div className="typing-indicator">

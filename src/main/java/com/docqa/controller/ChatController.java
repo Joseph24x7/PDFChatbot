@@ -32,7 +32,7 @@ public class ChatController {
     }
 
     /**
-     * WebSocket handler for chat messages
+     * WebSocket handler for chat messages with streaming support
      * Clients should send to: /app/chat/message
      * Clients should subscribe to: /topic/chat/{sessionId}
      */
@@ -53,22 +53,57 @@ public class ChatController {
         }
 
         try {
+            String messageId = java.util.UUID.randomUUID().toString();
+
             // Send user message confirmation
             ChatMessageDto userMsg = ChatMessageDto.builder()
                     .role("user")
                     .content(request.getQuestion())
+                    .type("message")
+                    .messageId(messageId)
                     .build();
             messagingTemplate.convertAndSend("/topic/chat/" + request.getSessionId(), userMsg);
 
-            // Process the chat message
-            String response = chatService.chat(request.getSessionId(), request.getQuestion());
-
-            // Send assistant response
-            ChatMessageDto assistantMsg = ChatMessageDto.builder()
+            // Send streaming start signal
+            ChatMessageDto startMsg = ChatMessageDto.builder()
                     .role("assistant")
-                    .content(response)
+                    .content("")
+                    .type("start")
+                    .messageId(messageId)
                     .build();
-            messagingTemplate.convertAndSend("/topic/chat/" + request.getSessionId(), assistantMsg);
+            messagingTemplate.convertAndSend("/topic/chat/" + request.getSessionId(), startMsg);
+
+            // Process the chat message with streaming
+            chatService.chatStream(
+                request.getSessionId(),
+                request.getQuestion(),
+                // onToken callback - send each chunk
+                (chunk) -> {
+                    ChatMessageDto chunkMsg = ChatMessageDto.builder()
+                            .role("assistant")
+                            .content(chunk)
+                            .type("chunk")
+                            .messageId(messageId)
+                            .build();
+                    messagingTemplate.convertAndSend("/topic/chat/" + request.getSessionId(), chunkMsg);
+                },
+                // onComplete callback - send end signal
+                (fullResponse) -> {
+                    ChatMessageDto endMsg = ChatMessageDto.builder()
+                            .role("assistant")
+                            .content(fullResponse)
+                            .type("end")
+                            .messageId(messageId)
+                            .build();
+                    messagingTemplate.convertAndSend("/topic/chat/" + request.getSessionId(), endMsg);
+                    log.info("Streaming completed for session: {}", request.getSessionId());
+                },
+                // onError callback
+                (error) -> {
+                    log.error("Error during streaming", error);
+                    sendErrorMessage(request.getSessionId(), "Error processing message: " + error.getMessage());
+                }
+            );
 
         } catch (RuntimeException e) {
             log.error("Error processing chat message", e);
@@ -80,6 +115,7 @@ public class ChatController {
         ChatMessageDto errorMsg = ChatMessageDto.builder()
                 .role("error")
                 .content(errorMessage)
+                .type("error")
                 .build();
         messagingTemplate.convertAndSend("/topic/chat/" + sessionId, errorMsg);
     }

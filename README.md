@@ -1,382 +1,200 @@
-# PDF Chat Bot - Document Q&A System
 
-A full-stack application combining **React + Vite** frontend with **Spring Boot** backend for intelligent document Q&A powered by Ollama LLM. Upload PDFs and chat about their content with an AI chatbot that remembers previous questions and context.
+# Document Q&A System
 
-## 🎯 Features
+An intelligent document analysis platform that enables conversational AI-powered Q&A over PDF documents with real-time streaming responses.
 
-- **📄 PDF Upload**: Upload PDF documents (max 1 MB) with automatic text extraction
-- **🤖 AI-Powered Chat**: Ask questions about documents using local Ollama LLM
-- **💬 Chatbot Memory**: Conversations remember previous messages and document context
-- **⚡ Real-time WebSocket**: Live chat with instant message delivery using WebSocket/STOMP
-- **🔌 Connection Status**: Visual indicator showing WebSocket connection state
-- **🔐 Session Management**: Each document gets its own chat session
-- **⚡ Single Port**: Frontend and backend run on **port 8080**
-- **🐳 Docker Support**: Complete Docker Compose setup with Ollama, MongoDB, and Spring Boot
-- **✅ Input Validation**: File type and size validation
-- **🚨 Error Handling**: Centralized exception handling with detailed error responses
-- **🔄 Auto-reconnect**: Automatic WebSocket reconnection on connection loss
+## Overview
 
-## 🏗️ Project Structure
+### What is this solution?
+
+This application provides an interactive chatbot interface for querying PDF documents using Large Language Models (LLMs). Unlike traditional document search or simple keyword matching, this system understands context, maintains conversation history, and provides intelligent answers based on document content.
+
+**Key Advantages:**
+- **Contextual Understanding**: Uses LLM to comprehend complex queries and document semantics rather than simple text matching
+- **Conversational Memory**: Maintains session-based chat history for follow-up questions and contextual conversations
+- **Real-time Streaming**: Delivers ChatGPT-like token-by-token response streaming for better UX
+- **Privacy-First**: Runs entirely on local infrastructure using Ollama - no data sent to external APIs
+- **Single-Port Deployment**: Unified frontend-backend deployment simplifies architecture and reduces infrastructure overhead
+
+## Technology Stack
+
+### Backend: Spring Boot (Java 21)
+
+**Why Spring Boot?**
+- **Enterprise-grade**: Production-ready with extensive ecosystem for monitoring, security, and scalability
+- **Native AI Integration**: Spring AI framework provides seamless LLM integration with consistent abstractions
+- **WebSocket Support**: Built-in STOMP/WebSocket for bi-directional real-time communication
+- **MongoDB Integration**: Spring Data MongoDB offers reactive, scalable document persistence
+- **Ecosystem Maturity**: Extensive tooling, testing support, and community resources
+
+**Core Technologies:**
+- Spring Boot 3.5.7 with Java 21 for modern language features and performance
+- Spring AI for LLM orchestration (abstraction over multiple LLM providers)
+- Spring WebSocket/STOMP for real-time streaming responses
+- Spring Data MongoDB for chat session and document metadata persistence
+- Apache PDFBox for PDF text extraction
+
+### Frontend: React + Vite
+
+**Why React + Vite?**
+- **Developer Experience**: Vite offers instant hot module replacement and optimized builds
+- **Component Reusability**: React's component model enables maintainable UI architecture
+- **Rich Ecosystem**: Extensive libraries for WebSocket clients, UI components, and state management
+- **Performance**: Vite's ES module-based dev server and optimized production builds
+- **Modern Standards**: Supports latest JavaScript/TypeScript features out of the box
+
+**Core Technologies:**
+- React 18 for component-based UI development
+- Vite for blazing-fast builds and development server
+- STOMP.js + SockJS for WebSocket client implementation
+- Axios for REST API communication
+
+### Infrastructure
+
+**Ollama (Local LLM Runtime):**
+- Privacy-focused: All processing happens locally
+- No API costs or rate limits
+- Model flexibility: Supports llama3.1, mistral, qwen2.5, etc.
+- Streaming-native API for real-time responses
+
+**MongoDB:**
+- Document-oriented structure matches chat session/message hierarchy
+- Schema flexibility for evolving data models
+- Horizontal scalability for production deployments
+- Native support for complex nested documents
+
+**Docker Compose:**
+- Simplified multi-service orchestration
+- Consistent development and production environments
+- Easy dependency management (Ollama, MongoDB, application)
+
+## API Architecture
+
+### Flow Overview
 
 ```
-DocumentSummary/
-├── frontend/                          # React + Vite UI
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── DocumentUpload.jsx    # File upload component
-│   │   │   └── ChatBot.jsx           # Chat interface
-│   │   ├── api/
-│   │   │   └── documentApi.js        # API calls
-│   │   ├── App.jsx                   # Main app component
-│   │   └── main.jsx                  # Entry point
-│   ├── package.json
-│   └── vite.config.js
-├── src/main/java/com/docqa/          # Spring Boot application
-│   ├── controller/
-│   │   ├── DocumentController.java   # Upload endpoint
-│   │   └── ChatController.java       # Chat endpoint
-│   ├── service/
-│   │   ├── DocumentService.java      # PDF processing
-│   │   ├── ChatService.java          # Chat logic
-│   │   └── OllamaService.java        # LLM integration
-│   ├── model/                        # Data entities
-│   ├── repository/                   # Database access
-│   ├── dto/                          # Data transfer objects
-│   └── DocumentSummaryApplication.java
-├── docker-compose.yml                # Services orchestration
-├── Dockerfile                        # Container build
-├── pom.xml                          # Maven configuration
-└── README.md
+User → Frontend → REST/WebSocket → Spring Boot → Ollama LLM
+                        ↓                           ↓
+                   MongoDB ← Document Metadata & Chat Sessions
 ```
 
-## 📋 API Endpoints
+### Endpoints
 
-### 1. Upload Document
-**POST** `/api/v1/documents/upload`
+#### 1. Document Upload
+**`POST /api/v1/documents/upload`**
 
-Upload a PDF and start a chat session.
+**Purpose**: Upload PDF, extract text, create chat session, generate initial summary
 
-**Request:**
-```
-Content-Type: multipart/form-data
-file: <PDF file>
-query: <optional initial question>
-```
+**Flow**:
+1. Client uploads PDF via multipart/form-data
+2. Backend validates file type and size (max 1MB)
+3. PDFBox extracts text content
+4. Document metadata saved to MongoDB
+5. Chat session initialized with document context
+6. Returns `sessionId` and `documentId` for subsequent queries
 
-**Response (201 Created):**
+**Response**:
 ```json
 {
-  "documentId": "507f1f77bcf86cd799439011",
-  "sessionId": "sess-123456",
-  "response": "Document loaded successfully! Ask me any questions about the document.",
-  "documentName": "sample.pdf"
+  "sessionId": "sess-abc123",
+  "documentId": "doc-xyz789",
+  "documentName": "report.pdf",
+  "response": "Document loaded successfully!"
 }
 ```
 
-### 2. Send Chat Message
-**POST** `/api/v1/chat/message`
+#### 2. REST Chat (Synchronous)
+**`POST /api/v1/chat/message`**
 
-Send a question about the document and get an AI response.
+**Purpose**: Send question and receive complete response (backward compatibility)
 
-**Request:**
+**Flow**:
+1. Client sends question with `sessionId`
+2. Backend retrieves chat session and document from MongoDB
+3. Constructs prompt with document context + conversation history
+4. Calls Ollama LLM API (blocking call)
+5. Saves user question and AI response to MongoDB
+6. Returns complete response
+
+**Response**:
 ```json
 {
-  "sessionId": "sess-123456",
-  "question": "What is the main topic?"
+  "sessionId": "sess-abc123",
+  "documentId": "doc-xyz789",
+  "messages": [...],
+  "currentResponse": "The document discusses..."
 }
 ```
 
-**Response (200 OK):**
-```json
-{
-  "sessionId": "sess-123456",
-  "documentId": "507f1f77bcf86cd799439011",
-  "messages": [
-    {
-      "role": "user",
-      "content": "What is the main topic?",
-      "timestamp": "2025-12-13T10:30:00Z"
-    },
-    {
-      "role": "assistant",
-      "content": "The main topic is...",
-      "timestamp": "2025-12-13T10:30:05Z"
-    }
-  ]
-}
-```
+#### 3. WebSocket Chat (Streaming)
+**`WS ws://localhost:8080/ws`**
 
-### 3. WebSocket Chat (Real-time)
-**WebSocket Endpoint:** `ws://localhost:8080/ws`
+**Purpose**: Real-time streaming responses with token-level granularity
 
-Connect to WebSocket for live chat updates.
+**Flow**:
+1. Client establishes WebSocket connection via STOMP protocol
+2. Client subscribes to `/topic/chat/{sessionId}`
+3. Client sends message to `/app/chat/message`
+4. Backend processes asynchronously:
+   - Sends "start" message
+   - Streams each token as it's generated from Ollama
+   - Sends "chunk" messages incrementally
+   - Sends "end" message with full response
+5. Frontend renders tokens in real-time (ChatGPT-like typing effect)
 
-**Subscribe to:** `/topic/chat/{sessionId}`
+**Message Types**:
+- `message`: User message echo
+- `start`: Stream initialization
+- `chunk`: Individual token/word (multiple)
+- `end`: Stream completion with full response
+- `error`: Error notification
 
-**Send to:** `/app/chat/message`
+#### 4. Session Retrieval
+**`GET /api/v1/chat/{sessionId}`**
 
-**Message Format:**
-```json
-{
-  "sessionId": "sess-123456",
-  "question": "What is the main topic?"
-}
-```
+**Purpose**: Retrieve conversation history for session restoration
 
-**Received Messages:**
-```json
-{
-  "role": "user" | "assistant" | "error",
-  "content": "Message content"
-}
-```
+**Flow**:
+1. Client requests session by ID
+2. Backend fetches from MongoDB
+3. Returns all messages and document metadata
 
-**Features:**
-- 🔴/🟢 Connection status indicator
-- Real-time message delivery
-- Automatic reconnection
-- SockJS fallback for older browsers
+## Quick Start
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Docker & Docker Compose** (easiest way)
-- **OR**: Java 21, Maven 3.9+, Node.js 25+
-
-### Option 1: Docker Compose (Recommended)
-
-1. **Start all services:**
-   ```bash
-   docker-compose up -d
-   ```
-
-2. **Wait for services to initialize** (1-2 minutes):
-   - Ollama downloads the LLM model (llama3.1:8b)
-   - MongoDB initializes
-   - Spring Boot starts and serves the frontend
-
-3. **Open in browser:**
-   ```
-   http://localhost:8080
-   ```
-
-4. **Check service status:**
-   ```bash
-   docker-compose ps
-   ```
-
-### Option 2: Local Development
-
-#### 1. Start Ollama
+### Docker Compose (Recommended)
 ```bash
-docker run -d -p 11434:11434 --name ollama ollama/ollama:latest
+docker-compose up -d
+# Wait 1-2 minutes for Ollama model download
+# Open http://localhost:8080
+```
+
+### Manual Setup
+```bash
+# 1. Start Ollama
+docker run -d -p 11434:11434 ollama/ollama
 docker exec ollama ollama pull llama3.1:8b
-```
 
-#### 2. Start MongoDB
-```bash
+# 2. Start MongoDB
 docker run -d -p 27017:27017 \
   -e MONGO_INITDB_ROOT_USERNAME=root \
   -e MONGO_INITDB_ROOT_PASSWORD=example \
-  --name mongodb mongo:7.0
-```
+  mongo:7.0
 
-#### 3. Build and Run Spring Boot
-```bash
+# 3. Build and Run
 mvn clean package
 java -jar target/PDFChatBot.jar
 ```
 
-#### 4. Open in browser
-```
-http://localhost:8080
-```
+## Architecture Highlights
 
-## 💻 How to Use
+**Single-Port Deployment**: Frontend built into Spring Boot JAR and served from root path - simplifies reverse proxy configuration and reduces operational complexity.
 
-1. **Upload PDF**: Click "Upload Document" and select a PDF file (max 1 MB)
-2. **Chat**: Once uploaded, ask questions in the chat box
-3. **History**: All previous messages and document context are remembered
-4. **New Document**: Click "Upload New" to switch to a different PDF
+**Session-Based Context**: Each uploaded document gets isolated chat session, enabling multiple concurrent document conversations without context bleeding.
 
-## ⚙️ Configuration
+**Streaming Architecture**: WebSocket-based streaming provides superior UX over polling or SSE, with STOMP protocol enabling bidirectional communication and subscription management.
 
-### Backend (application.yml)
-```yaml
-spring:
-  ai:
-    ollama:
-      base-url: http://localhost:11434
-      chat:
-        model: llama3.1:8b
-  data:
-    mongodb:
-      uri: mongodb://root:example@localhost:27017/document-summary?authSource=admin
-
-server:
-  port: 8080
-
-app:
-  max-file-size: 1048576  # 1 MB
-```
-
-### Frontend (vite.config.js)
-Frontend is built into the Spring Boot JAR and served from `/` route.
-
-## 🔧 Technology Stack
-
-**Backend:**
-- Spring Boot 3.5.7 (Java 21)
-- Spring WebSocket & STOMP (Real-time messaging)
-- Spring Data MongoDB
-- Spring AI (Ollama integration)
-- Apache PDFBox (PDF extraction)
-- Lombok
-
-**Frontend:**
-- React 18+
-- Vite
-- Axios (API calls)
-- STOMP.js & SockJS (WebSocket client)
-
-**Infrastructure:**
-- Ollama (LLM)
-- MongoDB (Database)
-- Docker & Docker Compose
-
-## 📝 Environment Variables
-
-```bash
-
-# Ollama Configuration
-SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
-SPRING_AI_OLLAMA_CHAT_MODEL=llama3.1:8b
-
-# MongoDB Configuration
-SPRING_DATA_MONGODB_URI=mongodb://root:example@localhost:27017/document-summary?authSource=admin
-
-# Application
-SERVER_PORT=8080
-APP_MAX_FILE_SIZE=1048576
-```
-
-## 🧪 Testing
-
-### Test Upload via cURL
-```bash
-curl -X POST http://localhost:8080/api/v1/documents/upload \
-  -F "file=@sample.pdf"
-```
-
-### Test Chat via cURL
-```bash
-curl -X POST http://localhost:8080/api/v1/chat/message \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sessionId": "<session-id-from-upload>",
-    "question": "What is this document about?"
-  }'
-```
-
-### Use Browser UI
-Simply open `http://localhost:8080` and use the web interface.
-
-## 🐛 Troubleshooting
-
-### 404 Error on http://localhost:8080
-- Ensure Spring Boot is running: `docker-compose ps`
-- Check logs: `docker-compose logs app`
-- Wait 30 seconds for services to fully initialize
-
-### "Timeout" Error During Chat
-- Ollama is processing - first query takes longer (1-5 minutes)
-- Check Ollama logs: `docker-compose logs ollama`
-- Ensure your machine has sufficient CPU/RAM
-
-### "multipart/form-data" Error
-- Ensure you're uploading as multipart form data
-- Content-Type should be handled automatically by the frontend
-- For cURL: use `-F` flag (not `-d`)
-
-### MongoDB Connection Refused
-- Check MongoDB is running: `docker-compose ps mongodb`
-- Verify credentials in application.yml
-- Check logs: `docker-compose logs mongodb`
-
-### Model Download Stuck
-- Ollama is downloading llama3.1:8b on first run (4-5 GB)
-- This is normal - takes 10-20 minutes
-- Monitor: `docker-compose logs ollama`
-
-## 📊 Response Timeout
-
-The application is configured with **10-minute timeout** for chat responses to allow for:
-- Complex document analysis
-- Large PDF processing
-- Slow LLM inference times
-
-No timeout configuration is needed - responses may take minutes.
-
-## 🛑 Stopping Services
-
-```bash
-# Stop all containers
-docker-compose down
-
-# Stop and remove data
-docker-compose down -v
-
-# View logs
-docker-compose logs -f
-```
-
-## 📋 Build from Source
-
-```bash
-# Maven builds frontend + backend automatically
-mvn clean package
-
-# Generated JAR includes React frontend
-# Output: target/PDFChatBot.jar
-```
-
-## 🔐 Security Notes
-
-- File uploads limited to 1 MB (configurable)
-- Only PDF files accepted
-- CORS enabled for development
-- Use HTTPS in production
-- Secure MongoDB credentials in production
-
-## 🌐 Supported LLM Models
-
-Change in `application.yml`:
-- `llama3.1:8b` (recommended, 8B parameters)
-- `qwen2.5:7b` (faster, 7B parameters)
-- `mistral:7b` (7B parameters)
-
-## 📚 Dependencies
-
-See `pom.xml` for complete list:
-- spring-boot-starter-web
-- spring-boot-starter-websocket
-- spring-boot-starter-data-mongodb
-- spring-ai-starter-model-ollama
-- pdfbox
-- springdoc-openapi (Swagger UI)
-- sockjs-client (Frontend)
-- @stomp/stompjs (Frontend)
-
-## 📞 Support
-
-For issues:
-1. Check logs: `docker-compose logs`
-2. Verify services: `docker-compose ps`
-3. Test API: Use provided cURL examples
-4. Check MongoDB: `docker exec document-qa-mongodb mongosh`
+**LLM Abstraction**: Spring AI abstracts LLM provider details, enabling easy swapping between Ollama, OpenAI, Azure OpenAI, or other providers without business logic changes.
 
 ---
 
-**Happy coding! 🚀**
-
+**Built with Spring Boot 3.5.7 • React 18 • Ollama • MongoDB**

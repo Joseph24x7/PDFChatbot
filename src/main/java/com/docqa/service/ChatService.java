@@ -9,6 +9,8 @@ import com.docqa.util.PromptBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.function.Consumer;
+
 @Service
 @Slf4j
 public class ChatService {
@@ -55,7 +57,7 @@ public class ChatService {
     }
 
     /**
-     * Send a message to the chatbot and get a response
+     * Send a message to the chatbot and get a response (non-streaming)
      */
     public String chat(String sessionId, String userMessage) {
         log.info("Processing chat message for session: {}", sessionId);
@@ -83,5 +85,50 @@ public class ChatService {
         return assistantResponse;
     }
 
+    /**
+     * Send a message to the chatbot with streaming response
+     * @param sessionId The chat session ID
+     * @param userMessage The user's message
+     * @param onToken Callback for each token chunk
+     * @param onComplete Callback when streaming completes with full response
+     * @param onError Callback for errors
+     */
+    public void chatStream(String sessionId, String userMessage,
+                          Consumer<String> onToken,
+                          Consumer<String> onComplete,
+                          Consumer<Throwable> onError) {
+        log.info("Processing streaming chat message for session: {}", sessionId);
+
+        try {
+            ChatSession session = getChatSession(sessionId);
+
+            // Add user message to history
+            ChatMessage userMsg = new ChatMessage("user", userMessage);
+            session.addMessage(userMsg);
+            chatSessionRepository.save(session);
+
+            // Build prompt with conversation context
+            String prompt = PromptBuilder.buildContextualPrompt(session, userMessage);
+
+            // Stream response from Ollama
+            ollamaService.streamText(
+                prompt,
+                onToken,
+                completeResponse -> {
+                    // Add assistant response to history after streaming completes
+                    ChatMessage assistantMsg = new ChatMessage("assistant", completeResponse);
+                    session.addMessage(assistantMsg);
+                    chatSessionRepository.save(session);
+
+                    onComplete.accept(completeResponse);
+                },
+                onError
+            );
+
+        } catch (Exception e) {
+            log.error("Error in chatStream", e);
+            onError.accept(e);
+        }
+    }
 }
 

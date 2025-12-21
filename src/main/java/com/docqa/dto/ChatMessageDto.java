@@ -10,7 +10,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class ChatMessageDto {
-    private String role;      // "user" or "assistant"
+    private String role;      // "user", "assistant", "system"
     private String content;   // Message content
+    private String type;      // "message", "start", "chunk", "end", "error"
+    private String messageId; // Unique ID for tracking streaming messages
 }
 
