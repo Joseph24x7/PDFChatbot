@@ -8,9 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class PromptBuilder {
 
-    /**
-     * Build a prompt that includes conversation history and document context
-     */
     public static String buildContextualPrompt(ChatSession session, String currentQuestion) {
         StringBuilder promptBuilder = new StringBuilder();
 

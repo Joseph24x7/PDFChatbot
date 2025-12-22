@@ -41,5 +41,13 @@ export const getChatSession = (sessionId) => {
   });
 };
 
+export const getAllSessions = () => {
+  return apiClient.get('/api/v1/chat/sessions', {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
 export default apiClient;
 

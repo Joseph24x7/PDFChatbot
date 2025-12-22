@@ -10,6 +10,10 @@ spring:
     mongodb:
       uri: mongodb://root:example@localhost:27017/document-summary?authSource=admin
       database: document-summary
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 5s
+    socket-timeout: 30s
   servlet:
     multipart:
       max-file-size: 1MB
@@ -23,6 +27,17 @@ server:
 # Application Configuration
 app:
   max-file-size: 1048576 # 1 MB in bytes
+
+elasticsearch:
+  index:
+    sessions: chat-sessions
+    documents: documents
+    messages: chat-messages
+  search:
+    max-results: 50
+    fuzzy-enabled: true
+    fuzzy-distance: 2
+    highlight-enabled: true
 
 # Logging Configuration
 logging:

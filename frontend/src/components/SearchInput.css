@@ -1,0 +1,22 @@
+.search-input-component {
+  position: relative;
+  width: 100%;
+}
+
+.search-connection-indicator {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.search-results-wrapper {
+  margin-top: var(--spacing-sm);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 320px;
+  overflow-y: auto;
+}
+

@@ -1,4 +1,4 @@
-package com.docqa.service;
+package com.docqa.service.llm;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -30,13 +30,6 @@ public class OllamaService {
         }
     }
 
-    /**
-     * Stream text generation from Ollama with real-time token callbacks
-     * @param prompt The input prompt
-     * @param onToken Callback invoked for each token chunk
-     * @param onComplete Callback invoked when streaming completes with full text
-     * @param onError Callback invoked on error
-     */
     public void streamText(String prompt, Consumer<String> onToken, Consumer<String> onComplete, Consumer<Throwable> onError) {
         try {
             log.info("Starting streaming text generation from Ollama model with prompt length: {}", prompt.length());
@@ -48,7 +41,6 @@ public class OllamaService {
 
             responseFlux.subscribe(
                 chatResponse -> {
-                    // Extract the token/chunk from the response
                     String chunk = chatResponse.getResult().getOutput().getText();
                     if (chunk != null && !chunk.isEmpty()) {
                         fullResponse.append(chunk);

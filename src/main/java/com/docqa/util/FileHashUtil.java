@@ -1,5 +1,7 @@
 package com.docqa.util;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -7,6 +9,7 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Slf4j
 public class FileHashUtil {
 
@@ -24,12 +27,6 @@ public class FileHashUtil {
         }
     }
 
-    /**
-     * Convert byte array to hexadecimal string
-     *
-     * @param bytes byte array
-     * @return hexadecimal string representation
-     */
     private static String bytesToHex(byte[] bytes) {
         StringBuilder hexString = new StringBuilder();
         for (byte b : bytes) {

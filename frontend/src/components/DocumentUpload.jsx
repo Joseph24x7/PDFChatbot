@@ -2,14 +2,13 @@ import React, { useState, useRef } from 'react';
 import './DocumentUpload.css';
 import { uploadDocument } from '../api/documentApi';
 
-export default function DocumentUpload({ onUploadComplete }) {
+export default function DocumentUpload({ onUploadComplete, onCancel }) {
   const [file, setFile] = useState(null);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
-  const [copiedIndex, setCopiedIndex] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -117,18 +116,19 @@ export default function DocumentUpload({ onUploadComplete }) {
     }
   };
 
-  const copyToClipboard = (text, index) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
-  };
-
   return (
     <div className="file-upload-container">
       <div className="card">
         <div className="header">
-          <h1>📄 Document Summary</h1>
-          <p>Upload a PDF document to get AI-powered summaries and answers</p>
+          <div>
+            <h1>📄 Document Summary</h1>
+            <p>Upload a PDF document to get AI-powered summaries and answers</p>
+          </div>
+          {onCancel && (
+            <button type="button" className="cancel-btn" onClick={onCancel}>
+              ← Back to Sessions
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleSubmit}>

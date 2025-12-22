@@ -2,9 +2,8 @@ package com.docqa.controller;
 
 import com.docqa.dto.DocumentUploadResponse;
 import com.docqa.model.ChatSession;
-import com.docqa.service.ChatService;
-import com.docqa.service.DocumentService;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.docqa.service.chat.ChatService;
+import com.docqa.service.document.DocumentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -18,7 +17,6 @@ import static com.docqa.validator.ChatBotValidator.validateFile;
 @RequestMapping("/api/v1/documents")
 @Slf4j
 @CrossOrigin(origins = "*", allowedHeaders = "*")
-@Tag(name = "Document Management", description = "APIs for document upload, summarization, and Q&A")
 public class DocumentController {
 
     private final DocumentService documentService;
@@ -41,13 +39,9 @@ public class DocumentController {
 
         validateFile(file, maxFileSize);
 
-        // Upload and process document
         String documentId = documentService.uploadDocument(file);
-
-        // Create chat session for this document
         ChatSession session = chatService.startChatSession(documentId);
 
-        // Get initial response if query provided
         String initialResponse;
         if (query != null && !query.trim().isEmpty()) {
             initialResponse = chatService.chat(session.getId(), query);

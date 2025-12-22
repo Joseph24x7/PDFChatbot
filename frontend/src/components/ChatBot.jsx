@@ -1,130 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './ChatBot.css';
-import { getChatSession } from '../api/documentApi';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+import { getChatSession, sendChatMessage } from '../api/documentApi';
 
-export default function ChatBot({ sessionId, documentName, onUploadNew }) {
+export default function ChatBot({ sessionId, documentName, onReset }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [connected, setConnected] = useState(false);
-  const [streamingMessage, setStreamingMessage] = useState(null); // For accumulating streaming chunks
   const messagesEndRef = useRef(null);
-  const stompClientRef = useRef(null);
 
   // Load chat history on mount
   useEffect(() => {
     loadChatHistory();
   }, [sessionId]);
 
-  // Setup WebSocket connection
-  useEffect(() => {
-    // Use environment variable if available, otherwise construct URL from current location
-    const wsUrl = import.meta.env.VITE_WS_URL || `${window.location.protocol}//${window.location.host}/ws`;
-
-    const client = new Client({
-      webSocketFactory: () => new SockJS(wsUrl),
-      debug: (str) => {
-        console.log('STOMP: ' + str);
-      },
-      reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-      onConnect: () => {
-        console.log('WebSocket Connected');
-        setConnected(true);
-
-        // Subscribe to messages for this session
-        client.subscribe(`/topic/chat/${sessionId}`, (message) => {
-          const receivedMessage = JSON.parse(message.body);
-          console.log('Received message:', receivedMessage);
-
-          handleStreamingMessage(receivedMessage);
-        });
-      },
-      onStompError: (frame) => {
-        console.error('STOMP error:', frame);
-        setError('WebSocket connection error');
-        setConnected(false);
-      },
-      onWebSocketClose: () => {
-        console.log('WebSocket Disconnected');
-        setConnected(false);
-      },
-    });
-
-    client.activate();
-    stompClientRef.current = client;
-
-    // Cleanup on unmount
-    return () => {
-      if (client) {
-        client.deactivate();
-      }
-    };
-  }, [sessionId]);
-
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
-  }, [messages, streamingMessage]);
-
-  const handleStreamingMessage = (receivedMessage) => {
-    const { type, role, content, messageId } = receivedMessage;
-
-    switch (type) {
-      case 'message':
-        // Regular user message
-        if (role === 'user') {
-          setMessages((prev) => [...prev, { role: 'user', content }]);
-        }
-        break;
-
-      case 'start':
-        // Start of streaming response
-        setLoading(true);
-        setStreamingMessage({ role: 'assistant', content: '', messageId });
-        break;
-
-      case 'chunk':
-        // Accumulate streaming chunks
-        setStreamingMessage((prev) => {
-          if (prev && prev.messageId === messageId) {
-            return { ...prev, content: prev.content + content };
-          }
-          return { role: 'assistant', content, messageId };
-        });
-        break;
-
-      case 'end':
-        // End of streaming - add complete message to history
-        setLoading(false);
-        setMessages((prev) => [...prev, { role: 'assistant', content }]);
-        setStreamingMessage(null);
-        break;
-
-      case 'error':
-        // Error message
-        setError(`❌ ${content}`);
-        setLoading(false);
-        setStreamingMessage(null);
-        break;
-
-      default:
-        // Legacy format for backward compatibility
-        if (role === 'error') {
-          setError(`❌ ${content}`);
-          setLoading(false);
-        } else {
-          setMessages((prev) => [...prev, receivedMessage]);
-          if (role === 'assistant') {
-            setLoading(false);
-          }
-        }
-    }
-  };
+  }, [messages]);
 
   const loadChatHistory = async () => {
     try {
@@ -145,34 +38,39 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
 
     if (!inputValue.trim()) return;
 
-    if (!connected) {
-      setError('❌ WebSocket not connected. Please wait...');
-      return;
-    }
-
     const userMessage = inputValue.trim();
     setInputValue('');
     setError(null);
     setLoading(true);
 
+    // Add user message immediately to UI
+    const userMsg = { role: 'user', content: userMessage };
+    setMessages((prev) => [...prev, userMsg]);
+
     try {
-      // Send message via WebSocket
-      stompClientRef.current.publish({
-        destination: '/app/chat/message',
-        body: JSON.stringify({
-          sessionId: sessionId,
-          question: userMessage,
-        }),
-      });
+      // Send message via REST API
+      const response = await sendChatMessage(sessionId, userMessage);
+
+      // Add assistant response to UI
+      const assistantMsg = {
+        role: 'assistant',
+        content: response.data.lastResponse || response.data.response
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+
     } catch (err) {
-      const errorMessage = err.message || 'Failed to send message. Please try again.';
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to send message. Please try again.';
       setError(`❌ ${errorMessage}`);
       console.error('Chat error:', err);
+
+      // Remove the user message if failed
+      setMessages((prev) => prev.slice(0, -1));
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(e);
@@ -180,27 +78,24 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
   };
 
   return (
-    <div className="chat-container">
+    <div className="chat-page ds-page">
       <div className="chat-card">
         {/* Chat Header */}
         <div className="chat-header">
           <div>
-            <h2>💬 Chat with Document</h2>
-            <div className="document-info">
+            <h2 className="chat-title">💬 Chat with Document</h2>
+            <div className="chat-document-name">
               📄 {documentName}
-              <span className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
-                {connected ? '🟢' : '🔴'}
-              </span>
             </div>
           </div>
-          <button className="upload-new-btn" onClick={onUploadNew}>
-            📤 Upload New
+          <button className="ds-btn ds-btn-secondary" onClick={onReset}>
+            🔄 Reset / New Session
           </button>
         </div>
 
         {/* Messages Container */}
         <div className="messages-container">
-          {messages.length === 0 && !streamingMessage ? (
+          {messages.length === 0 ? (
             <div className="empty-state">
               <h3>👋 Start a Conversation</h3>
               <p>Ask any questions about the document below</p>
@@ -215,27 +110,16 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
                   <div className="message-content">{msg.content}</div>
                 </div>
               ))}
-
-              {/* Streaming message - shown in real-time */}
-              {streamingMessage && (
-                <div className="message assistant streaming">
-                  <div className="message-avatar">🤖</div>
-                  <div className="message-content">
-                    {streamingMessage.content}
-                    <span className="streaming-cursor">▊</span>
-                  </div>
-                </div>
-              )}
             </>
           )}
 
-          {loading && !streamingMessage && (
+          {loading && (
             <div className="message assistant">
               <div className="message-avatar">🤖</div>
-              <div className="typing-indicator">
-                <div className="typing-dot"></div>
-                <div className="typing-dot"></div>
-                <div className="typing-dot"></div>
+              <div className="ds-typing">
+                <div className="ds-typing-dot"></div>
+                <div className="ds-typing-dot"></div>
+                <div className="ds-typing-dot"></div>
               </div>
             </div>
           )}
@@ -263,19 +147,19 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
               className="chat-input"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="Ask a question about the document..."
-              disabled={loading || !connected}
+              disabled={loading}
               rows="1"
             />
             <button
               className="send-btn"
               onClick={handleSendMessage}
-              disabled={loading || !inputValue.trim() || !connected}
-              title={loading ? 'Processing...' : !connected ? 'Connecting...' : 'Send message'}
+              disabled={loading || !inputValue.trim()}
+              title={loading ? 'Processing...' : 'Send message'}
             >
               {loading ? (
-                <div className="spinner-small"></div>
+                <div className="ds-spinner"></div>
               ) : (
                 <span>📤</span>
               )}
@@ -286,4 +170,3 @@ export default function ChatBot({ sessionId, documentName, onUploadNew }) {
     </div>
   );
 }
-

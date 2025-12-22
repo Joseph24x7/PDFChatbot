@@ -1,5 +1,7 @@
 package com.docqa.util;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -10,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Slf4j
 public class PDFExtractor {
 

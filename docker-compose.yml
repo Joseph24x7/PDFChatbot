@@ -11,6 +11,7 @@ services:
     restart: unless-stopped
     networks:
       - document-qa-network
+
   mongodb:
     image: mongo:7.0
     container_name: document-qa-mongodb
@@ -26,10 +27,34 @@ services:
     command: --auth
     networks:
       - document-qa-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: document-qa-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.name=document-qa-cluster
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - document-qa-network
+
 volumes:
   ollama_data:
     driver: local
   mongodb_data:
+    driver: local
+  elasticsearch_data:
     driver: local
 
 networks:

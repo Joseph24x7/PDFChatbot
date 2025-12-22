@@ -1,4 +1,4 @@
-package com.docqa.service;
+package com.docqa.service.document;
 
 import com.docqa.model.DocumentEntity;
 import com.docqa.repository.DocumentRepository;
@@ -20,9 +20,6 @@ public class DocumentService {
         this.documentRepository = documentRepository;
     }
 
-    /**
-     * Upload a document and return its ID (for chatbot integration)
-     */
     public String uploadDocument(MultipartFile file) {
         log.info("Uploading document: {}, file size: {}", file.getOriginalFilename(), file.getSize());
 
@@ -58,6 +55,5 @@ public class DocumentService {
                 .updatedAt(now)
                 .build();
     }
-
 }
 

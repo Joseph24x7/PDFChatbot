@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -16,6 +17,9 @@ public class ChatSessionResponse {
     private String documentId;
     private String documentName;
     private List<ChatMessageDto> messages;
+    private Integer messageCount;
+    private LocalDateTime createdAt;
+    private LocalDateTime lastInteractionAt;
     private String currentResponse;  // Latest assistant response
 }
 
