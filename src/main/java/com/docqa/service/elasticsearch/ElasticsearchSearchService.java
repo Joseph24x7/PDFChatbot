@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -46,36 +45,27 @@ public class ElasticsearchSearchService {
             log.info("Searching Elasticsearch index '{}' for query: '{}' (fuzzy: {}, distance: {})",
                     sessionsIndex, queryText, fuzzyEnabled, fuzzyDistance);
 
+            // Build search request
             SearchRequest searchRequest = SearchRequest.of(s -> s
                     .index(sessionsIndex)
                     .query(buildQuery(queryText))
-                    .size(maxResults)
-            );
+                    .size(maxResults));
 
-            SearchResponse<ChatSessionDocument> response = elasticsearchClient.search(
-                    searchRequest,
-                    ChatSessionDocument.class
-            );
+            // Execute search
+            SearchResponse<ChatSessionDocument> response = elasticsearchClient.search(searchRequest, ChatSessionDocument.class);
 
-            long searchTime = System.currentTimeMillis() - startTime;
+            // Process results
             long totalHits = response.hits().total() != null ? response.hits().total().value() : response.hits().hits().size();
-            log.info("Elasticsearch search completed in {}ms, found {} hits for query '{}'",
-                    searchTime, totalHits, queryText);
-
+            log.info("Elasticsearch search completed in {}ms, found {} hits for query '{}'", System.currentTimeMillis() - startTime, totalHits, queryText);
             if (totalHits == 0) {
                 log.warn("No results found for query '{}'. Index may be empty or query doesn't match any documents.", queryText);
             }
 
-            return response.hits().hits().stream()
-                    .map(this::toSessionResponse)
-                    .collect(Collectors.toList());
+            // Map hits to response DTOs
+            return response.hits().hits().stream().map(this::toSessionResponse).toList();
 
         } catch (Exception e) {
-            if (e.getMessage() != null && e.getMessage().contains("index_not_found_exception")) {
-                log.warn("Elasticsearch index '{}' not found. Please sync data or wait for index creation.", sessionsIndex);
-            } else {
-                log.error("Error searching Elasticsearch", e);
-            }
+            log.error("Error searching Elasticsearch", e);
             return new ArrayList<>();
         }
     }

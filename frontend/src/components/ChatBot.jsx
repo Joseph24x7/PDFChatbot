@@ -54,7 +54,7 @@ export default function ChatBot({ sessionId, documentName, onReset }) {
       // Add assistant response to UI
       const assistantMsg = {
         role: 'assistant',
-        content: response.data.lastResponse || response.data.response
+        content: response.data.currentResponse
       };
       setMessages((prev) => [...prev, assistantMsg]);
 

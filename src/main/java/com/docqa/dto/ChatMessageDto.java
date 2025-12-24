@@ -1,18 +1,9 @@
 package com.docqa.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.docqa.model.Role;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class ChatMessageDto {
-    private String role;      // "user", "assistant", "system"
-    private String content;   // Message content
-    private String type;      // "message", "start", "chunk", "end", "error"
-    private String messageId; // Unique ID for tracking streaming messages
+public record ChatMessageDto(
+        Role role,        // "user", "assistant"
+        String content   // Message content
+) {
 }
-

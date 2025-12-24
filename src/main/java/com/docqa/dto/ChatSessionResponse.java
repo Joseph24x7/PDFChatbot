@@ -20,6 +20,6 @@ public class ChatSessionResponse {
     private Integer messageCount;
     private LocalDateTime createdAt;
     private LocalDateTime lastInteractionAt;
-    private String currentResponse;  // Latest assistant response
+    private String currentResponse;
 }
 

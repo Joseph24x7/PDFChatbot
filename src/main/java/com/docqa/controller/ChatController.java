@@ -2,64 +2,63 @@ package com.docqa.controller;
 
 import com.docqa.dto.ChatMessageRequest;
 import com.docqa.dto.ChatSessionResponse;
-import com.docqa.mapper.ChatSessionMapper;
+import com.docqa.mapper.ChatBotMapper;
 import com.docqa.model.ChatSession;
 import com.docqa.service.chat.ChatService;
-import com.docqa.validator.ChatRequestValidator;
+import com.docqa.validator.ChatBotValidator;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/chat")
 @Slf4j
 @CrossOrigin(origins = "*", allowedHeaders = "*")
+@RequiredArgsConstructor
 public class ChatController {
 
     private final ChatService chatService;
 
-    public ChatController(ChatService chatService) {
-        this.chatService = chatService;
-    }
-
     @PostMapping(value = "/message", consumes = "application/json", produces = "application/json")
     public ResponseEntity<ChatSessionResponse> sendMessage(@RequestBody ChatMessageRequest request) {
-        log.info("Received REST chat message for session: {}", request.getSessionId());
 
-        ChatRequestValidator.validateChatMessageRequest(request);
+        log.info("Received REST chat message for session: {}", request.sessionId());
 
-        String response = chatService.chat(request.getSessionId(), request.getQuestion());
-        ChatSession session = chatService.getChatSession(request.getSessionId());
-        ChatSessionResponse sessionResponse = ChatSessionMapper.toResponse(session, response);
+        // Validate request
+        ChatBotValidator.validateChatMessageRequest(request);
 
-        return ResponseEntity.ok(sessionResponse);
+        // Process chat message
+        String response = chatService.chat(request.sessionId(), request.question());
+
+        // Retrieve updated chat session
+        ChatSession session = chatService.getChatSession(request.sessionId());
+
+        // Map to response DTO
+        return ResponseEntity.ok(ChatBotMapper.toResponse(session, response));
     }
 
     @GetMapping(value = "/{sessionId}", produces = "application/json")
     public ResponseEntity<ChatSessionResponse> getChatSession(@PathVariable String sessionId) {
         log.info("Retrieving chat session: {}", sessionId);
 
-        ChatRequestValidator.validateSessionId(sessionId);
+        // Validate session ID
+        ChatBotValidator.validateSessionId(sessionId);
 
+        // Retrieve chat session
         ChatSession session = chatService.getChatSession(sessionId);
-        ChatSessionResponse response = ChatSessionMapper.toResponse(session);
 
-        return ResponseEntity.ok(response);
+        // Map to response DTO
+        return ResponseEntity.ok(ChatBotMapper.toResponse(session));
     }
 
     @GetMapping(value = "/sessions", produces = "application/json")
     public ResponseEntity<List<ChatSessionResponse>> getAllSessions() {
         log.info("Retrieving all chat sessions");
-
         List<ChatSession> sessions = chatService.getAllSessions();
-        List<ChatSessionResponse> responses = sessions.stream()
-                .map(ChatSessionMapper::toResponse)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(sessions.stream().map(ChatBotMapper::toResponse).toList());
     }
 }
 

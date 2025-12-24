@@ -1,18 +1,16 @@
 package com.docqa.service.llm;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class OllamaService {
 
     private final OllamaChatModel ollama;
-
-    public OllamaService(OllamaChatModel ollama) {
-        this.ollama = ollama;
-    }
 
     public String generateText(String prompt) {
         try {

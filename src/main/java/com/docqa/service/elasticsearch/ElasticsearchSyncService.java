@@ -77,21 +77,6 @@ public class ElasticsearchSyncService {
         }
     }
 
-    @Async
-    public void deleteSession(String sessionId) {
-        try {
-            // Delete using Elasticsearch Java Client
-            elasticsearchClient.delete(d -> d
-                .index(sessionsIndex)
-                .id(sessionId)
-            );
-
-            log.debug("Deleted session {} from Elasticsearch", sessionId);
-        } catch (Exception e) {
-            log.error("Error deleting session from Elasticsearch: {}", e.getMessage());
-        }
-    }
-
     private ChatSessionDocument toDocument(ChatSession session) {
         return ChatSessionDocument.builder()
                 .id(session.getId())

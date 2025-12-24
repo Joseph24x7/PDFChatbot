@@ -1,28 +1,25 @@
-package com.docqa.service.elasticsearch;
+package com.docqa.config;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
-
 @Service
 @Slf4j
 @ConditionalOnBean(name = "elasticsearchClient")
-public class ElasticsearchIndexService {
+@RequiredArgsConstructor
+public class LoadElasticsearchIndex {
 
     private final ElasticsearchClient elasticsearchClient;
 
     @Value("${elasticsearch.index.sessions}")
     private String sessionsIndex;
-
-    public ElasticsearchIndexService(ElasticsearchClient elasticsearchClient) {
-        this.elasticsearchClient = elasticsearchClient;
-    }
 
     @PostConstruct
     public void initializeIndices() {

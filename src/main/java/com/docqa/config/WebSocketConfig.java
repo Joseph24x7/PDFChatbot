@@ -2,6 +2,7 @@ package com.docqa.config;
 
 import com.docqa.service.elasticsearch.ElasticsearchSyncService;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -12,13 +13,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @Slf4j
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final ElasticsearchSyncService syncService;
-
-    public WebSocketConfig(ElasticsearchSyncService syncService) {
-        this.syncService = syncService;
-    }
 
     @PostConstruct
     public void logConfiguration() {

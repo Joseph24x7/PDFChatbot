@@ -1,10 +1,9 @@
 package com.docqa.controller;
 
 import com.docqa.dto.ChatSessionResponse;
+import com.docqa.dto.SearchRequest;
 import com.docqa.service.elasticsearch.ElasticsearchSearchService;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -14,47 +13,36 @@ import org.springframework.stereotype.Controller;
 import java.util.List;
 import java.util.Map;
 
+import static com.docqa.mapper.DocumentMapper.buildSearchResponse;
+
 @Controller
 @Slf4j
 @ConditionalOnBean(ElasticsearchSearchService.class)
+@RequiredArgsConstructor
 public class SearchWebSocketController {
 
     private final ElasticsearchSearchService elasticsearchSearchService;
 
-    public SearchWebSocketController(ElasticsearchSearchService elasticsearchSearchService) {
-        this.elasticsearchSearchService = elasticsearchSearchService;
-    }
-
     @MessageMapping("/search/sessions")
     @SendToUser("/queue/search/sessions")
     public Map<String, Object> searchSessions(SearchRequest request) {
-        log.info("WebSocket search request: query='{}', token={}", request.getQuery(), request.getToken());
+        log.info("WebSocket search request: query='{}', token={}", request.query(), request.token());
 
         try {
             // Use Elasticsearch for fast, fuzzy search
-            List<ChatSessionResponse> results = elasticsearchSearchService.searchSessions(request.getQuery());
+            List<ChatSessionResponse> results = elasticsearchSearchService.searchSessions(request.query());
+            log.info("Elasticsearch returned {} results for token {}", results.size(), request.token());
 
-            log.info("Elasticsearch returned {} results for token {}", results.size(), request.getToken());
+            // Build and return response
+            return buildSearchResponse(results, request.token());
 
-            return Map.of(
-                    "results", results,
-                    "token", request.getToken() != null ? request.getToken() : 0
-            );
         } catch (Exception e) {
+
             log.error("Error processing search request", e);
-            return Map.of(
-                    "results", List.of(),
-                    "token", request.getToken() != null ? request.getToken() : 0
-            );
+            return buildSearchResponse(List.of(), request.token());
+
         }
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class SearchRequest {
-        private String query;
-        private Integer token;
-    }
 }
 
