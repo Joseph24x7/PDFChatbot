@@ -61,7 +61,7 @@ An AI-powered document analysis platform with real-time chat and intelligent sea
 │  └────────┬──────────────┬──────────────┬─────────────┬──────────┘ │
 │           │              │              │             │            │
 │  ┌────────▼────┐  ┌──────▼──────┐ ┌────▼─────┐ ┌────▼──────────┐   │
-│  │ Spring AI   │  │   PDFBox    │ │ MongoDB  │ │ Elasticsearch │   │
+│  │  AI         │  │   PDFBox    │ │ MongoDB  │ │ Elasticsearch │   │
 │  │ Integration │  │  Text       │ │ Repo     │ │    Client     │   │
 │  └────────┬────┘  │  Extraction │ └────┬─────┘ └────┬──────────┘   │
 │           │       └─────────────┘      │            │              │
