@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import SearchInput from './SearchInput';
@@ -36,7 +36,7 @@ export default function SessionList({ onSelectSession, onUploadNew }) {
 
       setRecentSessions(sorted.slice(0, 5));
     } catch (e) {
-      console.error('Failed to load recent sessions', e);
+      // Failed to load recent sessions - silent fail
     }
   };
 
@@ -61,7 +61,6 @@ export default function SessionList({ onSelectSession, onUploadNew }) {
           if (token !== activeTokenRef.current) return;
 
           setSessions(Array.isArray(results) ? results : []);
-          setShowResults(true);
         });
       },
       onWebSocketClose: () => setConnected(false),

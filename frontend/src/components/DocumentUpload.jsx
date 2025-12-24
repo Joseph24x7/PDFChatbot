@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import './DocumentUpload.css';
 import { uploadDocument } from '../api/documentApi';
 

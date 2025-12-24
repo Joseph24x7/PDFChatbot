@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './ChatBot.css';
 import { getChatSession, sendChatMessage } from '../api/documentApi';
 
@@ -61,7 +61,6 @@ export default function ChatBot({ sessionId, documentName, onReset }) {
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to send message. Please try again.';
       setError(`❌ ${errorMessage}`);
-      console.error('Chat error:', err);
 
       // Remove the user message if failed
       setMessages((prev) => prev.slice(0, -1));
